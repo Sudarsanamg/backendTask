@@ -124,4 +124,31 @@ const validateCreateTask = (req, res, next) => {
   next();
 };
 
-module.exports = { validateRegistration, validateLogin, validateCreateTask };
+const validateCreateCategory = (req, res, next) => {
+  const { name, color } = req.body;
+  const errors = [];
+
+  if (!name || name.trim().length === 0) {
+    errors.push('Category name is required');
+  } else if (name.length > 50) {
+    errors.push('Category name must be less than 50 characters');
+  }
+
+  if (!color || color.trim().length === 0) {
+    errors.push('Category color is required');
+  } else if (!/^#([A-Fa-f0-9]{6})$/.test(color)) {
+    errors.push('Color must be a valid hex color code (e.g., #3B82F6)');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors
+    });
+  }
+
+  next();
+};
+
+module.exports = { validateRegistration, validateLogin, validateCreateTask, validateCreateCategory };
