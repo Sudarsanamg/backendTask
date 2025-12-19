@@ -75,6 +75,52 @@ const register = async (req, res) => {
   }
 };
 
-module.exports = {
-  register
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Generate tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        tokens: {
+          accessToken,
+          refreshToken,
+          expiresIn: parseInt(process.env.JWT_EXPIRE)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during login',
+      error: error.message
+    });
+  }
 };
+
+module.exports = {
+    register,
+    login
+}
