@@ -19,6 +19,13 @@ const createTask = async (req, res) => {
       status: 'todo'
     });
 
+    // Increment category taskCount if category provided
+    if (category) {
+      try {
+        await Category.updateOne({ _id: category, user: userId }, { $inc: { taskCount: 1 } });
+      } catch (_) {}
+    }
+
     res.status(201).json({
       success: true,
       message: 'Task created successfully',
@@ -125,6 +132,9 @@ const updateTaskStatus = async (req, res) => {
     }
 
     task.status = status;
+    if (status === 'completed') {
+      task.completedAt = new Date();
+    }
     await task.save();
 
     res.status(200).json({
@@ -209,6 +219,9 @@ const updateTask = async (req, res) => {
       });
     }
 
+    // Track previous category for taskCount adjustments
+    const prevCategory = task.category ? String(task.category) : null;
+
     // Update fields if provided
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
@@ -234,6 +247,19 @@ const updateTask = async (req, res) => {
     if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
 
     await task.save();
+
+    // Adjust category taskCount if category changed
+    if (category !== undefined) {
+      const newCategory = task.category ? String(task.category) : null;
+      if (prevCategory !== newCategory) {
+        if (prevCategory) {
+          try { await Category.updateOne({ _id: prevCategory, user: userId }, { $inc: { taskCount: -1 } }); } catch (_) {}
+        }
+        if (newCategory) {
+          try { await Category.updateOne({ _id: newCategory, user: userId }, { $inc: { taskCount: 1 } }); } catch (_) {}
+        }
+      }
+    }
 
     const updatedTask = await Task.findById(id).populate('category', 'name color');
     const taskObj = updatedTask.toJSON();
@@ -289,7 +315,12 @@ const deleteTask = async (req, res) => {
       });
     }
 
+    // Capture category id (if any) to decrement count after delete
+    const catId = task.category ? String(task.category) : null;
     await Task.findByIdAndDelete(id);
+    if (catId) {
+      try { await Category.updateOne({ _id: catId, user: userId }, { $inc: { taskCount: -1 } }); } catch (_) {}
+    }
 
     res.status(200).json({
       success: true,

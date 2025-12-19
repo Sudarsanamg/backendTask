@@ -26,6 +26,9 @@ const taskSchema = new mongoose.Schema({
   dueDate: {
     type: Date
   },
+  completedAt: {
+    type: Date
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -56,6 +59,7 @@ taskSchema.methods.toJSON = function() {
     status: task.status,
     priority: task.priority,
     dueDate: task.dueDate,
+    completedAt: task.completedAt,
     user: task.user,
     createdAt: task.createdAt
   };
