@@ -120,7 +120,37 @@ const login = async (req, res) => {
   }
 };
 
+const getCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User information retrieved successfully',
+      data: {
+        user: user.toJSON()
+      }
+    });
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error retrieving user information',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
     register,
-    login
+    login,
+    getCurrentUser
 }
