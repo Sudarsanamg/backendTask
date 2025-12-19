@@ -70,4 +70,58 @@ const validateLogin = (req, res, next) => {
   next();
 };
 
-module.exports = { validateRegistration, validateLogin };
+const validateCreateTask = (req, res, next) => {
+  const { title, description, priority, dueDate, category, tags, estimatedHours } = req.body;
+  const errors = [];
+
+  if (!title || title.trim().length === 0) {
+    errors.push('Task title is required');
+  } else if (title.length < 3) {
+    errors.push('Title must be at least 3 characters long');
+  } else if (title.length > 100) {
+    errors.push('Title must be less than 100 characters');
+  }
+
+  if (description && description.length > 500) {
+    errors.push('Description must be less than 500 characters');
+  }
+
+  if (priority && !['low', 'medium', 'high'].includes(priority)) {
+    errors.push('Priority must be one of: low, medium, high');
+  }
+
+  if (dueDate) {
+    const date = new Date(dueDate);
+    if (isNaN(date.getTime())) {
+      errors.push('Due date must be a valid date');
+    } else if (date <= new Date()) {
+      errors.push('Due date must be in the future');
+    }
+  }
+
+  if (estimatedHours !== undefined) {
+    if (typeof estimatedHours !== 'number' || estimatedHours < 0) {
+      errors.push('Estimated hours must be a non-negative number');
+    }
+  }
+
+  if (tags) {
+    if (!Array.isArray(tags)) {
+      errors.push('Tags must be an array');
+    } else if (tags.some(tag => typeof tag !== 'string')) {
+      errors.push('All tags must be strings');
+    }
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors
+    });
+  }
+
+  next();
+};
+
+module.exports = { validateRegistration, validateLogin, validateCreateTask };
