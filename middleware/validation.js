@@ -151,4 +151,90 @@ const validateCreateCategory = (req, res, next) => {
   next();
 };
 
-module.exports = { validateRegistration, validateLogin, validateCreateTask, validateCreateCategory };
+const mongoose = require('mongoose');
+
+const validateGetTasksQuery = (req, res, next) => {
+  const {
+    status,
+    priority,
+    category,
+    search,
+    page,
+    limit,
+    sortBy
+  } = req.query;
+
+  const errors = [];
+
+  if (status) {
+    const statuses = status.split(',');
+    const allowed = ['todo', 'in-progress', 'completed', 'archived'];
+    const invalid = statuses.filter(s => !allowed.includes(s));
+    if (invalid.length > 0) {
+      errors.push(`Invalid status value(s): ${invalid.join(', ')}`);
+    }
+  }
+
+  if (priority && !['low', 'medium', 'high'].includes(priority)) {
+    errors.push('Priority must be one of: low, medium, high');
+  }
+
+  if (category && !mongoose.Types.ObjectId.isValid(category)) {
+    errors.push('Category must be a valid ID');
+  }
+
+  if (search && typeof search === 'string' && search.length > 200) {
+    errors.push('Search query is too long (max 200 characters)');
+  }
+
+  if (page !== undefined) {
+    const p = parseInt(page);
+    if (isNaN(p) || p < 1) errors.push('Page must be a positive integer');
+  }
+  if (limit !== undefined) {
+    const l = parseInt(limit);
+    if (isNaN(l) || l < 1 || l > 100) errors.push('Limit must be between 1 and 100');
+  }
+
+  if (sortBy) {
+    const [field, order] = String(sortBy).split(':');
+    const allowedFields = ['createdAt', 'dueDate', 'priority', 'status', 'title'];
+    const allowedOrders = ['asc', 'desc'];
+    if (!allowedFields.includes(field)) {
+      errors.push(`sortBy field must be one of: ${allowedFields.join(', ')}`);
+    }
+    if (!allowedOrders.includes(order)) {
+      errors.push('sortBy order must be asc or desc');
+    }
+  }
+
+  const gte = req.query['dueDate[gte]'];
+  const lte = req.query['dueDate[lte]'];
+  if (gte) {
+    const d = new Date(gte);
+    if (isNaN(d.getTime())) errors.push('dueDate[gte] must be a valid date');
+  }
+  if (lte) {
+    const d = new Date(lte);
+    if (isNaN(d.getTime())) errors.push('dueDate[lte] must be a valid date');
+  }
+  if (gte && lte) {
+    const dg = new Date(gte);
+    const dl = new Date(lte);
+    if (!isNaN(dg.getTime()) && !isNaN(dl.getTime()) && dg > dl) {
+      errors.push('dueDate[gte] cannot be after dueDate[lte]');
+    }
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors
+    });
+  }
+
+  next();
+};
+
+module.exports = { validateRegistration, validateLogin, validateCreateTask, validateCreateCategory, validateGetTasksQuery };

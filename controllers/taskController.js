@@ -290,11 +290,117 @@ const deleteTask = async (req, res) => {
   }
 };
 
+const getTasks = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      status,
+      priority,
+      category,
+      search,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt:desc'
+    } = req.query;
+
+    // Build filter
+    const filter = { user: userId };
+
+    if (status) {
+      const statuses = status.split(',');
+      filter.status = { $in: statuses };
+    }
+    if (priority) {
+      filter.priority = priority;
+    }
+    if (category) {
+      filter.category = category;
+    }
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (req.query['dueDate[gte]'] || req.query['dueDate[lte]']) {
+      filter.dueDate = {};
+      if (req.query['dueDate[gte]']) {
+        filter.dueDate.$gte = new Date(req.query['dueDate[gte]']);
+      }
+      if (req.query['dueDate[lte]']) {
+        filter.dueDate.$lte = new Date(req.query['dueDate[lte]']);
+      }
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Sorting
+    const sort = {};
+    if (sortBy) {
+      const [field, order] = sortBy.split(':');
+      sort[field] = order === 'asc' ? 1 : -1;
+    }
+
+    const tasks = await Task.find(filter)
+      .populate('category', 'name color')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Task.countDocuments(filter);
+
+    const statsAgg = await Task.aggregate([
+      { $match: { user: userId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    const stats = { todo: 0, inProgress: 0, completed: 0, archived: 0 };
+    statsAgg.forEach(s => {
+      if (s._id === 'todo') stats.todo = s.count;
+      else if (s._id === 'in-progress') stats.inProgress = s.count;
+      else if (s._id === 'completed') stats.completed = s.count;
+      else if (s._id === 'archived') stats.archived = s.count;
+    });
+
+    const formattedTasks = tasks.map(t => {
+      const obj = t.toJSON();
+      if (t.category) {
+        obj.category = { id: t.category._id, name: t.category.name, color: t.category.color };
+      }
+      return obj;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        tasks: formattedTasks,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          pages: Math.ceil(total / limitNum)
+        },
+        stats
+      }
+    });
+  } catch (error) {
+    console.error('Get tasks error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error retrieving tasks',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createTask,
   getTaskById,
   updateTaskStatus,
   updateTaskPriority,
   updateTask,
-  deleteTask
+  deleteTask,
+  getTasks
 };
