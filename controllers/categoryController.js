@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const Task = require('../models/Task');
 
 const createCategory = async (req, res) => {
   try {
@@ -86,6 +87,9 @@ const deleteCategory = async (req, res) => {
         message: 'Category not found or you do not have permission to delete it'
       });
     }
+
+    // Set category to null for all tasks in this category
+    await Task.updateMany({ category: id, user: userId }, { $set: { category: null } });
 
     await Category.findByIdAndDelete(id);
 

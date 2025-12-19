@@ -12,6 +12,11 @@ const categorySchema = new mongoose.Schema({
     required: [true, 'Category color is required'],
     match: [/^#([A-Fa-f0-9]{6})$/, 'Color must be a valid hex color code']
   },
+  taskCount: {
+    type: Number,
+    default: 0,
+    min: [0, 'taskCount cannot be negative']
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
