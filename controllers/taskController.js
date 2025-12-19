@@ -179,9 +179,122 @@ const updateTaskPriority = async (req, res) => {
   }
 };
 
+const updateTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, dueDate, category, tags, estimatedHours } = req.body;
+    const userId = req.user.userId;
+
+    const task = await Task.findOne({ _id: id, user: userId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found or you do not have permission to update it'
+      });
+    }
+
+    // Update fields if provided
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (dueDate !== undefined) {
+      const date = new Date(dueDate);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Due date must be a valid date'
+        });
+      }
+      const now = new Date();
+      if (date <= now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Due date must be in the future'
+        });
+      }
+      task.dueDate = date;
+    }
+    if (category !== undefined) task.category = category;
+    if (tags !== undefined) task.tags = tags;
+    if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
+
+    await task.save();
+
+    const updatedTask = await Task.findById(id).populate('category', 'name color');
+    const taskObj = updatedTask.toJSON();
+    
+    if (updatedTask.category) {
+      taskObj.category = {
+        id: updatedTask.category._id,
+        name: updatedTask.category.name,
+        color: updatedTask.category.color,
+        tags: updatedTask.tags,
+        estimatedHours: updatedTask.estimatedHours
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Task updated successfully',
+      data: {
+        task: taskObj
+      }
+    });
+  } catch (error) {
+    console.error('Update task error:', error);
+
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: messages
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating task',
+      error: error.message
+    });
+  }
+};
+
+const deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const task = await Task.findOne({ _id: id, user: userId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found or you do not have permission to delete it'
+      });
+    }
+
+    await Task.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Task deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete task error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error deleting task',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createTask,
   getTaskById,
   updateTaskStatus,
-  updateTaskPriority
+  updateTaskPriority,
+  updateTask,
+  deleteTask
 };
