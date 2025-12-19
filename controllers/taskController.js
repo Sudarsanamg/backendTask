@@ -109,6 +109,21 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
+    // Enforce allowed status transitions
+    const allowedTransitions = {
+      'todo': ['in-progress', 'completed', 'archived'],
+      'in-progress': ['completed', 'archived'],
+      'completed': ['archived'],
+      'archived': []
+    };
+    const current = task.status;
+    if (!allowedTransitions[current].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition from "${current}" to "${status}"`
+      });
+    }
+
     task.status = status;
     await task.save();
 

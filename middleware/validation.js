@@ -22,16 +22,10 @@ const validateRegistration = (req, res, next) => {
 
   if (!password || password.length === 0) {
     errors.push('Password is required');
-  } else if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  } else if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  } else if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
+  } else if (password.length < 6) {
+    errors.push('Password must be at least 6 characters long');
   } else if (!/[0-9]/.test(password)) {
     errors.push('Password must contain at least one number');
-  } else if (!/[!@#$%^&*]/.test(password)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*)');
   }
 
   if (errors.length > 0) {
@@ -78,8 +72,8 @@ const validateCreateTask = (req, res, next) => {
     errors.push('Task title is required');
   } else if (title.length < 3) {
     errors.push('Title must be at least 3 characters long');
-  } else if (title.length > 100) {
-    errors.push('Title must be less than 100 characters');
+  } else if (title.length > 200) {
+    errors.push('Title must be less than 200 characters');
   }
 
   if (description && description.length > 500) {
